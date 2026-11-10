@@ -47,8 +47,7 @@ def du(path: Path, seen: set | None = None) -> tuple[int, float]:
             st = p.lstat()
         except OSError:
             continue
-        if os.path.islink(p):
-            newest = max(newest, st.st_mtime)
+        if os.path.islink(p):  # e.g. Hugging Face snapshots pointing at blobs: the blob's own time is what counts
             continue
         if p.is_dir():
             # folder times change for reasons that have nothing to do with use (and Windows is lax about them),
