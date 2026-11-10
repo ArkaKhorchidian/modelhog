@@ -39,7 +39,7 @@ def win() -> bool:
 def du(path: Path, seen: set | None = None) -> tuple[int, float]:
     """(bytes, newest mtime) of a file or folder. Symlinks aren't followed; hard links count once."""
     seen = seen if seen is not None else set()
-    total, newest = 0, 0.0
+    total, newest, newest_dir = 0, 0.0, 0.0
     stack = [path]
     while stack:
         p = stack.pop()
@@ -47,10 +47,13 @@ def du(path: Path, seen: set | None = None) -> tuple[int, float]:
             st = p.lstat()
         except OSError:
             continue
-        newest = max(newest, st.st_mtime)
         if os.path.islink(p):
+            newest = max(newest, st.st_mtime)
             continue
         if p.is_dir():
+            # folder times change for reasons that have nothing to do with use (and Windows is lax about them),
+            # so they only count when there are no files at all
+            newest_dir = max(newest_dir, st.st_mtime)
             try:
                 stack.extend(Path(e.path) for e in os.scandir(p))
             except OSError:
@@ -62,7 +65,8 @@ def du(path: Path, seen: set | None = None) -> tuple[int, float]:
                 continue
             seen.add(key)
         total += st.st_size
-    return total, newest
+        newest = max(newest, st.st_mtime)
+    return total, newest or newest_dir
 
 
 def env_path(var: str, default: Path) -> Path:
